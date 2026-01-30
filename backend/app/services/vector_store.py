@@ -1,0 +1,281 @@
+"""
+Vector store service using Qdrant.
+Handles storage and retrieval of embeddings.
+"""
+
+from typing import List, Dict, Any, Optional
+import uuid
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    VectorParams,
+    Distance,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+)
+import numpy as np
+
+from app.config import settings
+
+
+class VectorStore:
+    """Manages vector storage and retrieval with Qdrant."""
+    
+    def __init__(self):
+        self.transcript_collection = settings.qdrant_collection_transcripts
+        self.frame_collection = settings.qdrant_collection_frames
+        self._client = None
+        self._connected = False
+    
+    @property
+    def client(self):
+        """Lazy connection to Qdrant with timeout."""
+        if self._client is None:
+            try:
+                self._client = QdrantClient(
+                    host=settings.qdrant_host,
+                    port=settings.qdrant_port,
+                    timeout=5  # 5 second timeout
+                )
+                # Test connection
+                self._client.get_collections()
+                self._connected = True
+                print("✅ Connected to Qdrant")
+            except Exception as e:
+                print(f"⚠️ Qdrant not available: {e}")
+                self._connected = False
+        return self._client
+    
+    @property
+    def is_connected(self) -> bool:
+        """Check if Qdrant is available."""
+        if self._client is None:
+            _ = self.client  # Try to connect
+        return self._connected
+    
+    def init_collections(self):
+        """Initialize Qdrant collections if they don't exist."""
+        if not self.is_connected:
+            print("⚠️ Skipping collection init - Qdrant not connected")
+            return
+            
+        # Transcript embeddings (384-dim for all-MiniLM-L6-v2)
+        self._create_collection_if_not_exists(
+            self.transcript_collection,
+            vector_size=384
+        )
+        
+        # Frame embeddings (512-dim for CLIP)
+        self._create_collection_if_not_exists(
+            self.frame_collection,
+            vector_size=512
+        )
+    
+    def _create_collection_if_not_exists(self, name: str, vector_size: int):
+        """Create a collection if it doesn't exist."""
+        if not self.is_connected:
+            return
+        try:
+            collections = self.client.get_collections().collections
+            if not any(c.name == name for c in collections):
+                self.client.create_collection(
+                    collection_name=name,
+                    vectors_config=VectorParams(
+                        size=vector_size,
+                        distance=Distance.COSINE
+                    )
+                )
+                print(f"Created collection: {name}")
+        except Exception as e:
+            print(f"Failed to create collection {name}: {e}")
+    
+    async def add_transcript_embeddings(
+        self,
+        video_id: str,
+        embeddings: np.ndarray,
+        segments: List[Dict[str, Any]]
+    ) -> List[str]:
+        """
+        Store transcript segment embeddings.
+        
+        Args:
+            video_id: ID of the source video
+            embeddings: numpy array of embeddings
+            segments: List of segment metadata dicts
+            
+        Returns:
+            List of generated point IDs
+        """
+        points = []
+        point_ids = []
+        
+        for i, (embedding, segment) in enumerate(zip(embeddings, segments)):
+            point_id = str(uuid.uuid4())
+            point_ids.append(point_id)
+            
+            points.append(PointStruct(
+                id=point_id,
+                vector=embedding.tolist(),
+                payload={
+                    "video_id": video_id,
+                    "segment_id": segment.get("id"),
+                    "text": segment.get("text"),
+                    "start_time": segment.get("start_time"),
+                    "end_time": segment.get("end_time"),
+                    "speaker": segment.get("speaker")
+                }
+            ))
+        
+        self.client.upsert(
+            collection_name=self.transcript_collection,
+            points=points
+        )
+        
+        return point_ids
+    
+    async def add_frame_embeddings(
+        self,
+        video_id: str,
+        embeddings: np.ndarray,
+        frames: List[Dict[str, Any]]
+    ) -> List[str]:
+        """
+        Store frame embeddings.
+        
+        Args:
+            video_id: ID of the source video
+            embeddings: numpy array of CLIP embeddings
+            frames: List of frame metadata dicts
+            
+        Returns:
+            List of generated point IDs
+        """
+        points = []
+        point_ids = []
+        
+        for i, (embedding, frame) in enumerate(zip(embeddings, frames)):
+            point_id = str(uuid.uuid4())
+            point_ids.append(point_id)
+            
+            points.append(PointStruct(
+                id=point_id,
+                vector=embedding.tolist(),
+                payload={
+                    "video_id": video_id,
+                    "frame_id": frame.get("id"),
+                    "timestamp": frame.get("timestamp"),
+                    "frame_path": frame.get("frame_path"),
+                    "caption": frame.get("caption")
+                }
+            ))
+        
+        self.client.upsert(
+            collection_name=self.frame_collection,
+            points=points
+        )
+        
+        return point_ids
+    
+    async def search_transcripts(
+        self,
+        query_embedding: np.ndarray,
+        video_id: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Search transcript embeddings.
+        
+        Args:
+            query_embedding: Query vector
+            video_id: Optional filter by video
+            limit: Max results
+            
+        Returns:
+            List of matching segments with scores
+        """
+        filter_condition = None
+        if video_id:
+            filter_condition = Filter(
+                must=[FieldCondition(
+                    key="video_id",
+                    match=MatchValue(value=video_id)
+                )]
+            )
+        
+        results = self.client.search(
+            collection_name=self.transcript_collection,
+            query_vector=query_embedding.tolist(),
+            query_filter=filter_condition,
+            limit=limit
+        )
+        
+        return [
+            {
+                "id": r.id,
+                "score": r.score,
+                **r.payload
+            }
+            for r in results
+        ]
+    
+    async def search_frames(
+        self,
+        query_embedding: np.ndarray,
+        video_id: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Search frame embeddings using CLIP text embedding.
+        
+        Args:
+            query_embedding: CLIP text embedding
+            video_id: Optional filter by video
+            limit: Max results
+            
+        Returns:
+            List of matching frames with scores
+        """
+        filter_condition = None
+        if video_id:
+            filter_condition = Filter(
+                must=[FieldCondition(
+                    key="video_id",
+                    match=MatchValue(value=video_id)
+                )]
+            )
+        
+        results = self.client.search(
+            collection_name=self.frame_collection,
+            query_vector=query_embedding.tolist(),
+            query_filter=filter_condition,
+            limit=limit
+        )
+        
+        return [
+            {
+                "id": r.id,
+                "score": r.score,
+                **r.payload
+            }
+            for r in results
+        ]
+    
+    async def delete_video_embeddings(self, video_id: str):
+        """Delete all embeddings for a video."""
+        filter_condition = Filter(
+            must=[FieldCondition(
+                key="video_id",
+                match=MatchValue(value=video_id)
+            )]
+        )
+        
+        self.client.delete(
+            collection_name=self.transcript_collection,
+            points_selector=filter_condition
+        )
+        
+        self.client.delete(
+            collection_name=self.frame_collection,
+            points_selector=filter_condition
+        )
