@@ -1,4 +1,4 @@
-# ClipCompass 🧭
+# ClipCompass 
 ### Multi-Modal Video-Context Search Engine
 
 ClipCompass is a production-ready **Multi-Modal RAG system** that ingests videos (Zoom recordings, YouTube content), synchronizes audio transcripts with visual frame embeddings, and enables natural language search across both modalities.
@@ -7,7 +7,7 @@ ClipCompass is a production-ready **Multi-Modal RAG system** that ingests videos
 
 ---
 
-## 🎯 Project Vision
+##  Project Vision
 
 **The Problem:** Companies have massive amounts of video data (Zoom calls, training recordings, customer demos) that's impossible to search effectively.
 
@@ -238,12 +238,9 @@ Once running, visit:
 ## 🤝 Contributing
 
 This is a portfolio/research project. Feel free to fork and adapt for your use case!
-
 ---
 
-## 📄 License
 
-MIT License - See LICENSE file for details
 
 ---
 
