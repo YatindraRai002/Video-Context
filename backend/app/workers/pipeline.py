@@ -18,14 +18,16 @@ async def process_video_task(video_id: str):
         # Get video from database
         video = db.query(Video).filter(Video.id == video_id).first()
         if not video:
-            print(f"❌ Video {video_id} not found")
+            print(f"[ERROR] Video {video_id} not found")
             return
         
         # Run processing pipeline
         await video_processor.process_video(db, video)
         
     except Exception as e:
-        print(f"❌ Processing failed for {video_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print(f"[ERROR] Processing failed for {video_id}: {str(e)}")
         # Update status to FAILED if not already done by processor
         # (Though processor should ideally handle its own errors, we catch top-level here)
         try:

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Upload, X, CheckCircle, AlertCircle } from "lucide-react";
+import { API_BASE } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +48,7 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
 
         try {
             const xhr = new XMLHttpRequest();
-            xhr.open("POST", "http://localhost:8000/api/v1/videos/upload");
+            xhr.open("POST", `${API_BASE}/videos/upload`);
 
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable) {
@@ -74,7 +75,7 @@ export default function UploadModal({ onClose, onUploadSuccess }: UploadModalPro
             xhr.onerror = () => {
                 setStatus("error");
                 setIsUploading(false);
-                setErrorMessage("Network error occurred.");
+                setErrorMessage("Could not connect to the server. Make sure the backend is running (see README).");
             };
 
             xhr.send(formData);

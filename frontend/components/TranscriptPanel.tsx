@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { formatTimestamp } from "@/lib/api";
+import { formatTimestamp, API_BASE } from "@/lib/api";
 
 interface TranscriptSegment {
     text: string;
@@ -24,7 +24,7 @@ export default function TranscriptPanel({ videoId, currentTime = 0, onSeek }: Tr
         const fetchTranscript = async () => {
             try {
                 const response = await fetch(
-                    `http://localhost:8000/api/v1/videos/${videoId}/transcript`
+                    `${API_BASE}/videos/${videoId}/transcript`
                 );
                 if (response.ok) {
                     const data = await response.json();

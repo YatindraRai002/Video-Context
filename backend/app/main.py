@@ -22,21 +22,21 @@ from app.api.routes import videos, search, clips, asr
 async def lifespan(app: FastAPI):
     """Application lifecycle management."""
     # Startup
-    print("🚀 Starting ClipCompass...")
+    print("[*] Starting ClipCompass...")
     
     # Initialize database
     init_db()
-    print("✅ Database initialized")
+    print("[+] Database initialized")
     
     # Create data directories
     for directory in [settings.upload_dir, settings.frames_dir, settings.audio_dir]:
         Path(directory).mkdir(parents=True, exist_ok=True)
-    print("✅ Data directories ready")
+    print("[+] Data directories ready")
     
     yield
     
     # Shutdown
-    print("👋 Shutting down ClipCompass...")
+    print("[*] Shutting down ClipCompass...")
 
 
 # Create FastAPI app

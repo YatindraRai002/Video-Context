@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { SearchResult } from "@/lib/types";
-import { formatTimestamp } from "@/lib/api";
+import { getSearchStatus } from "@/lib/api";
 import VideoCard from "./VideoCard";
 
 interface SearchResultsProps {
@@ -10,6 +12,16 @@ interface SearchResultsProps {
 }
 
 export default function SearchResults({ results, loading }: SearchResultsProps) {
+    const [searchStatus, setSearchStatus] = useState<Awaited<ReturnType<typeof getSearchStatus>> | null>(null);
+
+    useEffect(() => {
+        if (results.length === 0 && !loading) {
+            getSearchStatus().then(setSearchStatus).catch(() => setSearchStatus(null));
+        } else {
+            setSearchStatus(null);
+        }
+    }, [results.length, loading]);
+
     if (loading) {
         return (
             <div className="grid gap-4">
@@ -31,9 +43,31 @@ export default function SearchResults({ results, loading }: SearchResultsProps) 
 
     if (results.length === 0) {
         return (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-gray-400 max-w-lg mx-auto">
                 <div className="text-4xl mb-4">🔍</div>
-                <p>No results found. Try a different search query.</p>
+                <p className="mb-2">No results found.</p>
+                {searchStatus && (
+                    <div className="text-left bg-gray-800/50 border border-gray-700 rounded-xl p-4 mt-4 text-sm space-y-2">
+                        <p className="text-gray-300 font-medium">Why this might happen:</p>
+                        <ul className="list-disc list-inside space-y-1 text-gray-400">
+                            <li>Qdrant: {searchStatus.qdrant_connected ? "Connected" : "Not connected — run docker-compose up -d"}</li>
+                            <li>Transcripts indexed: {searchStatus.transcript_embeddings}</li>
+                            <li>Frames indexed: {searchStatus.frame_embeddings}</li>
+                        </ul>
+                        {searchStatus.videos.length > 0 && (
+                            <p className="pt-2 text-gray-400">
+                                Your videos: {searchStatus.videos.map((v) => `${v.title} (${v.status})`).join(", ")}.
+                                Search works only when at least one video has status <strong className="text-gray-300">ready</strong>.
+                            </p>
+                        )}
+                        <Link href="/videos" className="inline-block mt-3 text-indigo-400 hover:text-indigo-300">
+                            View videos &amp; processing status →
+                        </Link>
+                    </div>
+                )}
+                {!searchStatus && (
+                    <p className="text-sm mt-2">Make sure the backend is running and at least one video has finished processing (status: Ready).</p>
+                )}
             </div>
         );
     }

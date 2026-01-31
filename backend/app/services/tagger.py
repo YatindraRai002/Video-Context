@@ -50,7 +50,7 @@ class VisualTagger:
             try:
                 self.labels = models.ResNet50_Weights.IMAGENET1K_V1.meta["categories"]
             except:
-                print("⚠️ Could not load ImageNet categories from weights meta")
+                print("[WARN] Could not load ImageNet categories from weights meta")
                 self.labels = []
                 
             print("Visual Tagger loaded!")

@@ -247,3 +247,27 @@ async def get_frames(video_id: str, db: Session = Depends(get_db)):
     ]
     
     return {"video_id": video_id, "frames": frames}
+
+
+@router.post("/{video_id}/retry", response_model=VideoResponse)
+async def retry_video(
+    video_id: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Retry processing for a failed video."""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    # Reset status
+    video.status = VideoStatus.PENDING.value
+    video.processing_progress = 0
+    video.error_message = None
+    db.commit()
+    db.refresh(video)
+    
+    # Trigger processing
+    background_tasks.add_task(run_async_task, process_video_task(video_id))
+    
+    return video

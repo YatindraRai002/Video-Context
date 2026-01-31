@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Video, Plus, Settings, User, PlayCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UploadModal from "./UploadModal";
 import { Video as VideoType } from "@/lib/types";
+import { API_BASE } from "@/lib/api";
 
 export default function Sidebar() {
     const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -13,7 +15,7 @@ export default function Sidebar() {
 
     const fetchVideos = async () => {
         try {
-            const res = await fetch("http://localhost:8000/api/v1/videos/?limit=20");
+            const res = await fetch(`${API_BASE}/videos/?limit=20`);
             if (res.ok) {
                 const data = await res.json();
                 setVideos(data.videos);
@@ -57,7 +59,14 @@ export default function Sidebar() {
 
                 {/* Navigation / Library */}
                 <div className="flex-1 overflow-y-auto px-2">
-                    <div className="text-xs font-semibold text-gray-500 mb-2 px-2 uppercase tracking-wider">Video Library</div>
+                    <div className="flex items-center justify-between mb-2 px-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Video Library</span>
+                        {!loading && videos.length > 0 && (
+                            <span className="text-xs text-gray-500">
+                                {videos.filter((v) => v.status === "ready").length}/{videos.length} ready
+                            </span>
+                        )}
+                    </div>
                     <div className="space-y-1">
                         {loading ? (
                             <div className="px-2 text-sm text-gray-500 flex items-center gap-2">
@@ -68,17 +77,18 @@ export default function Sidebar() {
                             <div className="px-2 text-sm text-gray-500 italic">No videos found. Upload one!</div>
                         ) : (
                             videos.map((video) => (
-                                <Button
-                                    key={video.id}
-                                    variant="ghost"
-                                    className="w-full justify-start text-sm text-gray-400 hover:text-white hover:bg-white/5 px-2"
-                                    title={video.title}
-                                >
-                                    <div className="flex items-center gap-2 overflow-hidden w-full">
-                                        <PlayCircle className="w-4 h-4 shrink-0" />
-                                        <span className="truncate">{video.title}</span>
-                                    </div>
-                                </Button>
+                                <Link key={video.id} href={`/videos/${video.id}`}>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start text-sm text-gray-400 hover:text-white hover:bg-white/5 px-2"
+                                        title={`${video.title} (${video.status})`}
+                                    >
+                                        <div className="flex items-center gap-2 overflow-hidden w-full">
+                                            <PlayCircle className="w-4 h-4 shrink-0" />
+                                            <span className="truncate">{video.title}</span>
+                                        </div>
+                                    </Button>
+                                </Link>
                             ))
                         )}
                     </div>

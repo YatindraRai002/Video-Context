@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import SearchBar from "@/components/SearchBar";
 import SearchResults from "@/components/SearchResults";
 import { SearchResult } from "@/lib/types";
+import { API_BASE } from "@/lib/api";
 
 export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -16,7 +17,7 @@ export default function Home() {
     setHasSearched(true);
     try {
       const res = await fetch(
-        `http://localhost:8000/api/v1/search/?q=${encodeURIComponent(query)}&search_type=${searchType}&limit=10`
+        `${API_BASE}/search/?q=${encodeURIComponent(query)}&search_type=${searchType}&limit=10`
       );
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();

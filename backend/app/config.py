@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
     
-    # Database
+    # Database (run backend from project root or backend/ for consistent DB location)
     database_url: str = "sqlite:///./clipcompass.db"
     
     # Qdrant Vector Database
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     audio_dir: Path = base_data_dir / "audio"
     
     # AI Models
-    whisper_model: str = "base"  # tiny, base, small, medium, large
+    whisper_model: str = "small"  # tiny, base, small, medium, large
     clip_model: str = "ViT-B/32"
     text_embedding_model: str = "all-MiniLM-L6-v2"
     
@@ -49,11 +49,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
 
 
 settings = get_settings()

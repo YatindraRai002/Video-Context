@@ -41,10 +41,11 @@ class VectorStore:
                 # Test connection
                 self._client.get_collections()
                 self._connected = True
-                print("✅ Connected to Qdrant")
+                print("[+] Connected to Qdrant")
             except Exception as e:
-                print(f"⚠️ Qdrant not available: {e}")
+                print(f"[WARN] Qdrant not available: {e}")
                 self._connected = False
+                self._client = None  # So next request retries connection
         return self._client
     
     @property
@@ -57,7 +58,7 @@ class VectorStore:
     def init_collections(self):
         """Initialize Qdrant collections if they don't exist."""
         if not self.is_connected:
-            print("⚠️ Skipping collection init - Qdrant not connected")
+            print("[WARN] Skipping collection init - Qdrant not connected")
             return
             
         # Transcript embeddings (384-dim for all-MiniLM-L6-v2)
@@ -72,6 +73,16 @@ class VectorStore:
             vector_size=512
         )
     
+    def get_collection_count(self, collection_name: str) -> int:
+        """Return point count for a collection, or 0 if not connected or error."""
+        if not self.is_connected or self.client is None:
+            return 0
+        try:
+            info = self.client.get_collection(collection_name)
+            return info.points_count or 0
+        except Exception:
+            return 0
+
     def _create_collection_if_not_exists(self, name: str, vector_size: int):
         """Create a collection if it doesn't exist."""
         if not self.is_connected:
@@ -194,6 +205,8 @@ class VectorStore:
         Returns:
             List of matching segments with scores
         """
+        if not self.is_connected or self.client is None:
+            return []
         filter_condition = None
         if video_id:
             filter_condition = Filter(
@@ -202,23 +215,21 @@ class VectorStore:
                     match=MatchValue(value=video_id)
                 )]
             )
-        
-        results = self.client.search(
-            collection_name=self.transcript_collection,
-            query_vector=query_embedding.tolist(),
-            query_filter=filter_condition,
-            limit=limit
-        )
-        
-        return [
-            {
-                "id": r.id,
-                "score": r.score,
-                **r.payload
-            }
-            for r in results
-        ]
-    
+        try:
+            results = self.client.search(
+                collection_name=self.transcript_collection,
+                query_vector=query_embedding.tolist(),
+                query_filter=filter_condition,
+                limit=limit
+            )
+            return [
+                {"id": r.id, "score": r.score, **r.payload}
+                for r in results
+            ]
+        except Exception as e:
+            print(f"[WARN] transcript search failed: {e}")
+            return []
+
     async def search_frames(
         self,
         query_embedding: np.ndarray,
@@ -236,6 +247,8 @@ class VectorStore:
         Returns:
             List of matching frames with scores
         """
+        if not self.is_connected or self.client is None:
+            return []
         filter_condition = None
         if video_id:
             filter_condition = Filter(
@@ -244,23 +257,21 @@ class VectorStore:
                     match=MatchValue(value=video_id)
                 )]
             )
-        
-        results = self.client.search(
-            collection_name=self.frame_collection,
-            query_vector=query_embedding.tolist(),
-            query_filter=filter_condition,
-            limit=limit
-        )
-        
-        return [
-            {
-                "id": r.id,
-                "score": r.score,
-                **r.payload
-            }
-            for r in results
-        ]
-    
+        try:
+            results = self.client.search(
+                collection_name=self.frame_collection,
+                query_vector=query_embedding.tolist(),
+                query_filter=filter_condition,
+                limit=limit
+            )
+            return [
+                {"id": r.id, "score": r.score, **r.payload}
+                for r in results
+            ]
+        except Exception as e:
+            print(f"[WARN] frame search failed: {e}")
+            return []
+
     async def delete_video_embeddings(self, video_id: str):
         """Delete all embeddings for a video."""
         filter_condition = Filter(

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SearchResult } from "@/lib/types";
-import { formatTimestamp } from "@/lib/api";
+import { formatTimestamp, API_BASE, BACKEND_BASE } from "@/lib/api";
 import VideoModal from "./VideoModal";
 
 interface VideoCardProps {
@@ -37,7 +37,7 @@ export default function VideoCard({ result }: VideoCardProps) {
                     <div className="w-48 h-28 bg-gray-900 rounded-lg flex-shrink-0 relative overflow-hidden">
                         {result.frame_path ? (
                             <img
-                                src={`http://localhost:8000/static/frames/${result.frame_path.split("/").pop()}`}
+                                src={`${BACKEND_BASE}/static/frames/${result.frame_path}`}
                                 alt="Frame preview"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {

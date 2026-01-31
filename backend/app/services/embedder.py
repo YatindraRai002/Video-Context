@@ -86,8 +86,22 @@ class Embedder:
         with torch.no_grad():
             image_features = self._clip_model.get_image_features(**inputs)
         
+        print(f"DEBUG: image_features type: {type(image_features)}")
+        
+        # Handle if it's not a tensor
+        if not isinstance(image_features, torch.Tensor):
+            # If it's a validation output or similar, try to get the tensor
+            if hasattr(image_features, 'pooler_output'):
+                image_features = image_features.pooler_output
+            elif isinstance(image_features, list):
+                image_features = torch.tensor(image_features)
+        
         # Normalize embeddings
-        embeddings = image_features.cpu().numpy()
+        if hasattr(image_features, 'cpu'):
+            embeddings = image_features.cpu().numpy()
+        else:
+            embeddings = np.array(image_features)
+            
         embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
         
         return embeddings

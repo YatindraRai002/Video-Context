@@ -1,6 +1,20 @@
 import { SearchResponse, VideoListResponse, Video, TranslateResponse } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+export const BACKEND_BASE = API_BASE.replace(/\/api\/v1\/?$/, "") || "http://localhost:8000";
+
+// Search status (diagnostic: Qdrant + video statuses)
+export async function getSearchStatus(): Promise<{
+    qdrant_connected: boolean;
+    transcript_embeddings: number;
+    frame_embeddings: number;
+    videos: { id: string; title: string; status: string; processing_progress: number }[];
+    hint: string;
+}> {
+    const response = await fetch(`${API_BASE}/search/status`);
+    if (!response.ok) throw new Error("Failed to get status");
+    return response.json();
+}
 
 // Search videos
 export async function searchVideos(
@@ -144,6 +158,13 @@ export async function translateText(
         throw new Error("Translation failed");
     }
 
+    return response.json();
+}
+
+// Retry processing for a failed video
+export async function retryVideo(videoId: string): Promise<Video> {
+    const response = await fetch(`${API_BASE}/videos/${videoId}/retry`, { method: "POST" });
+    if (!response.ok) throw new Error("Retry failed");
     return response.json();
 }
 

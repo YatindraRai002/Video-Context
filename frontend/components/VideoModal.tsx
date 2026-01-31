@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getVideo } from "@/lib/api";
+import { getVideo, BACKEND_BASE, formatTimestamp } from "@/lib/api";
 import { Video } from "@/lib/types";
-import { formatTimestamp } from "@/lib/api";
 
 interface VideoModalProps {
     videoId: string;
@@ -69,7 +68,7 @@ export default function VideoModal({ videoId, timestamp, onClose }: VideoModalPr
                             {/* Real Video Player */}
                             <div className="aspect-video bg-black rounded-xl overflow-hidden relative group">
                                 <video
-                                    src={`http://localhost:8000/static/videos/${video.file_path ? video.file_path.split(/[/\\]/).pop() : ''}`}
+                                    src={`${BACKEND_BASE}/static/videos/${video.file_path ? video.file_path.split(/[/\\]/).pop() : ""}`}
                                     controls
                                     autoPlay
                                     className="w-full h-full"

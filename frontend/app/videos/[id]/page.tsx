@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { getVideo } from "@/lib/api";
+import { getVideo, formatTimestamp, BACKEND_BASE, retryVideo } from "@/lib/api";
 import { Video } from "@/lib/types";
-import { formatTimestamp } from "@/lib/api";
 import TranscriptPanel from "@/components/TranscriptPanel";
 import FramePreview from "@/components/FramePreview";
 
@@ -13,21 +12,34 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"transcript" | "frames">("transcript");
     const [currentTime, setCurrentTime] = useState(0);
+    const [retrying, setRetrying] = useState(false);
+
+    const fetchVideo = async () => {
+        try {
+            const data = await getVideo(resolvedParams.id);
+            setVideo(data);
+        } catch (error) {
+            console.error("Failed to fetch video:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchVideo = async () => {
-            try {
-                const data = await getVideo(resolvedParams.id);
-                setVideo(data);
-            } catch (error) {
-                console.error("Failed to fetch video:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchVideo();
     }, [resolvedParams.id]);
+
+    const handleRetry = async () => {
+        setRetrying(true);
+        try {
+            await retryVideo(resolvedParams.id);
+            await fetchVideo();
+        } catch (error) {
+            console.error("Retry failed:", error);
+        } finally {
+            setRetrying(false);
+        }
+    };
 
     const handleSeek = (time: number) => {
         setCurrentTime(time);
@@ -67,16 +79,27 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
                         ← Back to videos
                     </a>
                     <h1 className="text-3xl font-bold">{video.title}</h1>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-400 flex-wrap">
                         <span>{formatTimestamp(video.duration_seconds || 0)}</span>
                         <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${video.status === "ready"
                                 ? "bg-green-500/20 text-green-400"
-                                : "bg-yellow-500/20 text-yellow-400"
+                                : video.status === "failed"
+                                    ? "bg-red-500/20 text-red-400"
+                                    : "bg-yellow-500/20 text-yellow-400"
                                 }`}
                         >
                             {video.status}
                         </span>
+                        {video.status === "failed" && (
+                            <button
+                                onClick={handleRetry}
+                                disabled={retrying}
+                                className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 disabled:opacity-50"
+                            >
+                                {retrying ? "Retrying…" : "Retry processing"}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -86,7 +109,7 @@ export default function VideoDetailPage({ params }: { params: Promise<{ id: stri
                 {video.file_path ? (
                     <video
                         id="main-video"
-                        src={`http://localhost:8000/static/videos/${video.id}${video.file_path.substring(video.file_path.lastIndexOf('.'))}`}
+                        src={`${BACKEND_BASE}/static/videos/${video.file_path.split(/[/\\]/).pop()}`}
                         className="w-full h-full object-contain"
                         controls
                         onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}

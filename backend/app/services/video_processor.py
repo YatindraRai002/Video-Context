@@ -131,20 +131,20 @@ class VideoProcessor:
         if not video_path.exists():
             raise Exception(f"Video file not found: {video_path}")
         
-        print(f"🎬 Starting processing for: {video.title}")
+        print(f"[*] Starting processing for: {video.title}")
         
         try:
             # Step 1: Extract audio
             await self._update_status(db, video, VideoStatus.EXTRACTING_AUDIO, 10)
             audio_path = await self.audio_extractor.extract_audio(video_path, video_id)
-            print(f"✅ Audio extracted: {audio_path}")
+            print(f"[+] Audio extracted: {audio_path}")
             
             # Step 2: Transcribe
             await self._update_status(db, video, VideoStatus.TRANSCRIBING, 30)
             segments = await self.transcriber.transcribe(audio_path)
             chunked_segments = self.transcriber.chunk_segments(segments)
             await self._save_transcript_segments(db, video, chunked_segments)
-            print(f"✅ Transcribed: {len(chunked_segments)} segments")
+            print(f"[+] Transcribed: {len(chunked_segments)} segments")
             
             # Step 3: Extract frames
             await self._update_status(db, video, VideoStatus.EXTRACTING_FRAMES, 50)
@@ -153,18 +153,18 @@ class VideoProcessor:
             )
             
             # Step 3.5: Visual tagging (Transfer Learning)
-            print(f"👁️ Auto-tagging {len(frames)} frames with ResNet50...")
+            print(f"[*] Auto-tagging {len(frames)} frames with ResNet50...")
             for frame in frames:
                 tags = await visual_tagger.tag_frame(frame.path)
                 frame.tags = json.dumps(tags)  # Store as JSON string
                 
             await self._save_frames(db, video, frames)
-            print(f"✅ Extracted & Tagged: {len(frames)} frames")
+            print(f"[+] Extracted & Tagged: {len(frames)} frames")
             
             # Step 4: Generate embeddings
             await self._update_status(db, video, VideoStatus.EMBEDDING, 70)
             await self._generate_and_store_embeddings(db, video)
-            print(f"✅ Embeddings generated and indexed")
+            print(f"[+] Embeddings generated and indexed")
             
             # Step 5: Complete
             video.status = VideoStatus.READY.value
@@ -172,7 +172,7 @@ class VideoProcessor:
             video.processed_at = datetime.utcnow()
             db.commit()
             
-            print(f"🎉 Processing complete for: {video.title}")
+            print(f"[+] Processing complete for: {video.title}")
             
         except Exception as e:
             # Note: caller should handle exception logging/db update if needed, 

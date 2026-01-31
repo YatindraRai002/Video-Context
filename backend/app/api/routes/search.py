@@ -4,11 +4,13 @@ Implements semantic search across transcripts and video frames.
 """
 
 from fastapi import APIRouter, Depends, Query
+from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import Optional
 import time
 
 from app.core.database import get_db
+from app.config import settings
 from app.models.video import Video
 from app.models.schemas import SearchRequest, SearchResponse, SearchResultItem
 from app.services.embedder import Embedder
@@ -78,6 +80,16 @@ async def search(
             for r in frame_results:
                 video = db.query(Video).filter(Video.id == r["video_id"]).first()
                 video_title = video.title if video else "Unknown"
+                # Convert full path to URL path (relative to frames_dir) for frontend
+                frame_path_raw = r.get("frame_path")
+                frame_path_url = None
+                if frame_path_raw:
+                    try:
+                        fp = Path(frame_path_raw)
+                        rel = fp.relative_to(settings.frames_dir)
+                        frame_path_url = str(rel).replace("\\", "/")
+                    except (ValueError, TypeError):
+                        frame_path_url = Path(frame_path_raw).name
                 
                 results.append(SearchResultItem(
                     video_id=r["video_id"],
@@ -85,7 +97,7 @@ async def search(
                     timestamp=r.get("timestamp", 0),
                     end_time=None,
                     transcript_snippet=None,
-                    frame_path=r.get("frame_path"),
+                    frame_path=frame_path_url,
                     frame_caption=r.get("caption"),
                     score=r["score"],
                     match_type="frame"
@@ -129,6 +141,29 @@ async def search_post(
         total_results=len(results),
         latency_ms=latency_ms
     )
+
+
+@router.get("/status")
+async def search_status(db: Session = Depends(get_db)):
+    """
+    Diagnostic: Qdrant connection, embedding counts, and video statuses.
+    Use this to see why search might return no results.
+    """
+    qdrant_connected = vector_store.is_connected
+    transcript_count = vector_store.get_collection_count(vector_store.transcript_collection) if qdrant_connected else 0
+    frame_count = vector_store.get_collection_count(vector_store.frame_collection) if qdrant_connected else 0
+    videos = db.query(Video).order_by(Video.created_at.desc()).limit(50).all()
+    video_statuses = [
+        {"id": v.id, "title": v.title, "status": v.status, "processing_progress": v.processing_progress}
+        for v in videos
+    ]
+    return {
+        "qdrant_connected": qdrant_connected,
+        "transcript_embeddings": transcript_count,
+        "frame_embeddings": frame_count,
+        "videos": video_statuses,
+        "hint": "Search returns results only when videos have status 'ready' and Qdrant is running (docker-compose up -d)."
+    }
 
 
 @router.get("/suggestions")

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { formatTimestamp } from "@/lib/api";
+import { formatTimestamp, API_BASE, BACKEND_BASE } from "@/lib/api";
 
 interface Frame {
     timestamp: number;
@@ -23,7 +23,7 @@ export default function FramePreview({ videoId, onSeek }: FramePreviewProps) {
         const fetchFrames = async () => {
             try {
                 const response = await fetch(
-                    `http://localhost:8000/api/v1/videos/${videoId}/frames`
+                    `${API_BASE}/videos/${videoId}/frames`
                 );
                 if (response.ok) {
                     const data = await response.json();
@@ -58,8 +58,11 @@ export default function FramePreview({ videoId, onSeek }: FramePreviewProps) {
     }
 
     const getFrameUrl = (path: string) => {
-        const filename = path.split("/").pop();
-        return `http://localhost:8000/static/frames/${filename}`;
+        const parts = path.replace(/\\/g, "/").split("/");
+        const filename = parts.pop() || "";
+        const videoIdFromPath = parts.pop();
+        const relative = videoIdFromPath ? `${videoIdFromPath}/${filename}` : filename;
+        return `${BACKEND_BASE}/static/frames/${relative}`;
     };
 
     return (
