@@ -241,12 +241,9 @@ Once running, visit:
 ## 🤝 Contributing
 
 This is a portfolio/research project. Feel free to fork and adapt for your use case!
-
 ---
 
-## 📄 License
 
-MIT License - See LICENSE file for details
 
 ---
 
