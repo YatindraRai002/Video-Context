@@ -51,4 +51,9 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 
+@lru_cache()
+def get_settings():
+    return Settings()
+
+
 settings = get_settings()
