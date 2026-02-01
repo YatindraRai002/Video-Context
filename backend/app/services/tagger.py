@@ -66,7 +66,12 @@ class VisualTagger:
         Returns:
             List of label strings (e.g. ['sports_car', 'racer', ...])
         """
-        self._load_model()
+        try:
+             # Lazy load within try block
+            self._load_model()
+        except Exception as e:
+            print(f"Tagging skipped for {image_path}: Model load failed: {e}")
+            return []
         
         try:
             image = Image.open(image_path).convert("RGB")
