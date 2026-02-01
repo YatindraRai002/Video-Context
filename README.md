@@ -59,29 +59,36 @@ ClipCompass is a production-ready **Multi-Modal RAG system** that ingests videos
 ##  Installation
 
 ### Prerequisites
--   Python 3.10+
--   Node.js 18+
--   Docker & Docker Compose (for Qdrant/Redis)
--   FFmpeg (auto-installed via static-ffmpeg)
+-   Docker & Docker Compose (Recommended)
+-   *Or for local dev:* Python 3.10+, Node.js 18+, FFmpeg
 
-### Quick Start
+### Quick Start (Docker) 🐳
 
-#### 1. Start Infrastructure Services
+The easiest way to run ClipCompass is with Docker.
+
+1.  **Start Services**
+    ```bash
+    docker-compose up -d
+    ```
+
+2.  **Open Application**
+    - Frontend: [http://localhost:3000](http://localhost:3000)
+    - Backend API: [http://localhost:8000](http://localhost:8000)
+    
+See [**DOCKER.md**](./DOCKER.md) for detailed setup, troubleshooting, and production deployment guide.
+
+### Manual Installation (Local Dev)
+
+#### 1. Start Infrastructure
 ```bash
-docker-compose up -d
+docker-compose up -d qdrant redis
 ```
-This starts Qdrant (vector DB) and Redis (task queue).
 
 #### 2. Backend Setup
 ```bash
 cd backend
-python -m venv venv   # or from project root: python -m venv .venv
-
-# Windows
-.\\venv\\Scripts\\activate
-# Linux/Mac
-source venv/bin/activate
-
+python -m venv venv
+.\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
@@ -326,14 +333,6 @@ async def process_video(video: Video):
 
 ### 2. AI/ML Models
 
-#### **Whisper Transcriber** (`app/services/transcriber.py`)
-- **Model**: OpenAI Whisper (base model by default)
-- **Output**: Word-level timestamps + speaker segments
-- **Chunking**: Combines segments into 10-second chunks for embedding
-- **Language**: Auto-detection (supports 99 languages)
-
-**Example Output**:
-```json
 {
   "text": "Let's review the Q4 revenue projections",
   "start": 45.2,
@@ -604,4 +603,3 @@ ClipCompass demonstrates:
 3. **Scalable architecture**: Vector DB, background tasks, API design
 4. **Real-world application**: Solves enterprise problem (searchable video archives)
 
-This is not a toy project—it's a complete system that showcases advanced ML engineering skills.
