@@ -135,7 +135,7 @@ class Embedder:
     
     async def generate_caption(self, image_path: Path) -> str:
         """
-        Generate a text caption for an image using BLIP or similar.
+        Generate a text caption for an image using BLIP.
         
         Args:
             image_path: Path to image file
@@ -143,6 +143,29 @@ class Embedder:
         Returns:
             Generated caption string
         """
-        # TODO: Implement with BLIP or other captioning model
-        # For now, return placeholder
-        return "Frame from video"
+        try:
+            # Load BLIP model lazily
+            if not hasattr(self, '_blip_processor') or self._blip_processor is None:
+                from transformers import BlipProcessor, BlipForConditionalGeneration
+                
+                print("Loading BLIP captioning model...")
+                model_name = "Salesforce/blip-image-captioning-base"
+                self._blip_processor = BlipProcessor.from_pretrained(model_name)
+                self._blip_model = BlipForConditionalGeneration.from_pretrained(model_name).to(self.device)
+                print("BLIP model loaded!")
+            
+            # Load and process image
+            image = Image.open(image_path).convert("RGB")
+            inputs = self._blip_processor(image, return_tensors="pt").to(self.device)
+            
+            # Generate caption
+            with torch.no_grad():
+                out = self._blip_model.generate(**inputs, max_length=50)
+            
+            caption = self._blip_processor.decode(out[0], skip_special_tokens=True)
+            return caption.strip()
+            
+        except Exception as e:
+            print(f"Caption generation error: {e}")
+            # Return a generic caption on error
+            return "Frame from video"

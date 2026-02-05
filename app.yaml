@@ -1,6 +1,5 @@
 name: clipcompass
 services:
-# Frontend Service
 - name: frontend
   type: service
   source_dir: frontend
@@ -13,7 +12,6 @@ services:
   - key: NODE_ENV
     value: production
 
-# Backend API Service
 - name: backend
   type: service
   source_dir: backend
@@ -31,7 +29,6 @@ services:
   - key: CLIP_MODEL
     value: ViT-B/32
 
-# Celery Worker
 - name: celery-worker
   type: worker
   source_dir: backend
@@ -45,15 +42,9 @@ services:
   - key: REDIS_URL
     value: ${redis.DATABASE_URL}
   
-# Databases (Managed)
 databases:
 - name: redis
   engine: redis
   version: "7"
 
 - name: qdrant
-  # Note: DO App Platform doesn't have native Qdrant yet, often need Docker image service or managed Qdrant Cloud.
-  # For now, we'll try to use a generic container if possible, or user might need Qdrant Cloud.
-  # Detailed setup requires user intervention for Qdrant.
-  # We will omit Qdrant DB definition here to avoid billing surprises, assuming user uses Qdrant Cloud or Docker service.
-  # But to make verify pass, I'll comment this out and assume they might use an external URL.

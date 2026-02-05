@@ -216,18 +216,25 @@ class VectorStore:
                 )]
             )
         try:
-            results = self.client.search(
+            print(f"[DEBUG] Searching transcripts for query (embedding shape: {len(query_embedding.tolist())})")
+            response = self.client.query_points(
                 collection_name=self.transcript_collection,
-                query_vector=query_embedding.tolist(),
+                query=query_embedding.tolist(),
                 query_filter=filter_condition,
                 limit=limit
             )
+            results = response.points
+            print(f"[DEBUG] Found {len(results)} transcript results")
+            if results:
+                print(f"[DEBUG] First result score: {results[0].score}, text: {results[0].payload.get('text', 'N/A')[:50]}")
             return [
                 {"id": r.id, "score": r.score, **r.payload}
                 for r in results
             ]
         except Exception as e:
             print(f"[WARN] transcript search failed: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     async def search_frames(
@@ -258,12 +265,13 @@ class VectorStore:
                 )]
             )
         try:
-            results = self.client.search(
+            response = self.client.query_points(
                 collection_name=self.frame_collection,
-                query_vector=query_embedding.tolist(),
+                query=query_embedding.tolist(),
                 query_filter=filter_condition,
                 limit=limit
             )
+            results = response.points
             return [
                 {"id": r.id, "score": r.score, **r.payload}
                 for r in results

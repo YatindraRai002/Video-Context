@@ -1,9 +1,8 @@
 @echo off
 setlocal
 
-echo ===================================================
-echo   ClipCompass Docker Image Publisher
-echo ===================================================
+echo 
+
 
 REM Check if user is logged in
 docker login

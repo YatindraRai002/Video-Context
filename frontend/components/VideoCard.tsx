@@ -60,7 +60,18 @@ export default function VideoCard({ result }: VideoCardProps) {
                             {result.video_title}
                         </h3>
 
-                        <p className="text-gray-400 text-sm mt-1 line-clamp-2">
+                        {/* Prominent Timestamp Display */}
+                        <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs text-gray-500">Found at:</span>
+                            <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-lg text-sm font-mono font-semibold">
+                                ⏱️ {formatTimestamp(result.timestamp)}
+                                {result.end_time && result.end_time !== result.timestamp && (
+                                    <> - {formatTimestamp(result.end_time)}</>
+                                )}
+                            </span>
+                        </div>
+
+                        <p className="text-gray-400 text-sm mt-2 line-clamp-2">
                             {result.transcript_snippet || result.frame_caption || "No description available"}
                         </p>
 
@@ -77,7 +88,7 @@ export default function VideoCard({ result }: VideoCardProps) {
                             </span>
 
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">Score:</span>
+                                <span className="text-xs text-gray-500">Relevance:</span>
                                 <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"

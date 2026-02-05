@@ -127,11 +127,81 @@ async def search_post(
     request: SearchRequest,
     db: Session = Depends(get_db)
 ):
-    
+    """
+    Alternative POST-based search endpoint.
+    Supports more complex search requests with filters.
+    """
     start_time = time.time()
-    
-    # TODO: Implement search logic
     results = []
+    
+    try:
+        search_type = request.search_type or "hybrid"
+        limit = request.limit or 10
+        video_id = request.video_id
+        
+        # Search transcripts
+        if search_type in ["transcript", "hybrid"]:
+            text_embedding = await embedder.embed_text([request.query])
+            transcript_results = await vector_store.search_transcripts(
+                text_embedding[0], video_id, limit
+            )
+            
+            for r in transcript_results:
+                video = db.query(Video).filter(Video.id == r["video_id"]).first()
+                video_title = video.title if video else "Unknown"
+                
+                results.append(SearchResultItem(
+                    video_id=r["video_id"],
+                    video_title=video_title,
+                    timestamp=r.get("start_time", 0),
+                    end_time=r.get("end_time"),
+                    transcript_snippet=r.get("text"),
+                    frame_path=None,
+                    frame_caption=None,
+                    score=r["score"],
+                    match_type="transcript"
+                ))
+        
+        # Search frames
+        if search_type in ["frames", "hybrid"]:
+            clip_embedding = await embedder.embed_text_clip([request.query])
+            frame_results = await vector_store.search_frames(
+                clip_embedding[0], video_id, limit
+            )
+            
+            for r in frame_results:
+                video = db.query(Video).filter(Video.id == r["video_id"]).first()
+                video_title = video.title if video else "Unknown"
+                
+                frame_path_raw = r.get("frame_path")
+                frame_path_url = None
+                if frame_path_raw:
+                    try:
+                        fp = Path(frame_path_raw)
+                        rel = fp.relative_to(settings.frames_dir)
+                        frame_path_url = str(rel).replace("\\", "/")
+                    except (ValueError, TypeError):
+                        frame_path_url = Path(frame_path_raw).name
+                
+                results.append(SearchResultItem(
+                    video_id=r["video_id"],
+                    video_title=video_title,
+                    timestamp=r.get("timestamp", 0),
+                    end_time=None,
+                    transcript_snippet=None,
+                    frame_path=frame_path_url,
+                    frame_caption=r.get("caption"),
+                    score=r["score"],
+                    match_type="frame"
+                ))
+        
+        # Sort by score and limit
+        results.sort(key=lambda x: x.score, reverse=True)
+        results = results[:limit]
+        
+    except Exception as e:
+        print(f"Search error: {e}")
+        results = []
     
     latency_ms = (time.time() - start_time) * 1000
     
@@ -169,8 +239,36 @@ async def search_status(db: Session = Depends(get_db)):
 @router.get("/suggestions")
 async def get_search_suggestions(
     q: str = Query(..., min_length=1, max_length=100),
-    limit: int = Query(5, ge=1, le=10)
+    limit: int = Query(5, ge=1, le=10),
+    db: Session = Depends(get_db)
 ):
+    """
+    Get search suggestions based on query prefix.
+    Returns common phrases from transcript segments.
+    """
+    query_lower = q.lower()
+    suggestions = []
     
-    # TODO: Implement suggestions from search history and content
-    return {"suggestions": []}
+    try:
+        # Get recent transcript segments that contain the query
+        from app.models.video import TranscriptSegment
+        
+        segments = db.query(TranscriptSegment).filter(
+            TranscriptSegment.text.ilike(f"%{q}%")
+        ).limit(limit * 3).all()
+        
+        # Extract unique phrases containing the query
+        seen = set()
+        for seg in segments:
+            text = seg.text.strip()
+            # Only suggest if text contains the query and isn't too long
+            if query_lower in text.lower() and len(text) < 100 and text not in seen:
+                suggestions.append(text)
+                seen.add(text)
+                if len(suggestions) >= limit:
+                    break
+        
+    except Exception as e:
+        print(f"Suggestions error: {e}")
+    
+    return {"suggestions": suggestions[:limit]}

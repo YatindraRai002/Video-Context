@@ -1,54 +1,40 @@
-# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
 
-# Virtual environments
 venv/
 env/
 .venv/
 ENV/
 
-# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Environment
 .env
 .env.local
 
-# Database (will be in volume)
 *.db
 *.sqlite3
 
-# Data directories (will be in volumes)
 data/
-
-# ML Models (downloaded at runtime)
 models/
-
-# Logs
 *.log
 logs/
 
-# Testing
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Jupyter
 *.ipynb
 .ipynb_checkpoints/
 
-# OS
 .DS_Store
 Thumbs.db
 
-# Git
 .git
 .gitignore
 README.md
