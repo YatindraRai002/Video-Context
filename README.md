@@ -1,4 +1,4 @@
-# ClipCompass 🚀
+
 ### Elite Multi-Modal Video-Context Search Engine
 
 ClipCompass is a production-ready **Multi-Modal RAG system** that ingests videos (YouTube, Local uploads), synchronizes audio transcripts with visual frame embeddings, and enables natural language search across both modalities.
